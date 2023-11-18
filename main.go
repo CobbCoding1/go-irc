@@ -7,6 +7,9 @@ import (
     "net"
     "net/textproto"
     "strings"
+    "syscall"
+    "os"
+    "os/signal"
 )
 
 const (
@@ -37,6 +40,7 @@ type Client struct {
     chat MSG 
     conn net.Conn
     reader *textproto.Reader
+    disconnected bool
 }
 
 func handle_error(err error){
@@ -48,9 +52,6 @@ func handle_error(err error){
 func send_data(conn net.Conn, msg string) {
     fmt.Fprintf(conn, "%s\n", msg)
 }
-
-
-
 
 func parse_message(message string) (MSG) {
     var chat MSG 
@@ -78,13 +79,14 @@ func parse_message(message string) (MSG) {
     return chat 
 }
 
-func (client *Client)Init(address string, port string, password string, username string, nick string) {
+func Init(address string, port string, password string, username string, nick string)(Client) {
+    var client Client
     client.address = address
     client.port = port
     client.password = password 
     client.username = username 
     client.nick = nick 
-
+    return client
 }
 
 func (client *Client)Connect() {
@@ -95,7 +97,15 @@ func (client *Client)Connect() {
 }
 
 func (client *Client)Disconnect() {
-    client.conn.Close()
+    c := make(chan os.Signal, 1)
+    signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+    go func() {
+        for range c {
+            client.disconnected = true
+            client.conn.Close()
+            os.Exit(0)
+        }
+    }()
 }
 
 func (client *Client)Auth() {
@@ -122,20 +132,23 @@ func (client *Client)Join(server string){
 }
 
 func (client *Client)HandlePong() {
+    if client.disconnected {
+        return
+    }
     if strings.HasPrefix(client.chat.Message, "PING") {
         send_data(client.conn, fmt.Sprintf("PONG %s\n", strings.TrimPrefix(client.chat.Message, "PING ")))
     }
 }
 
 func (client *Client)GetData()(MSG) {
-    data, err := client.reader.ReadLine()
-    handle_error(err)
-    msg := parse_message(data)
-    client.chat = msg
-    return msg 
-    for {
-
+    if !client.disconnected {
+        data, err := client.reader.ReadLine()
+        handle_error(err)
+        msg := parse_message(data)
+        client.chat = msg
+        return msg 
     }
+    return MSG{} 
 }
 
 func (client *Client)Say(msg string) {
