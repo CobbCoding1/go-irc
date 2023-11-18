@@ -18,10 +18,10 @@ import (
 
 ### Usage
 ```
-client := goirc.Init(domain_name //irc.twitch.tv for example, port, password, username, nickname)
+    client := goirc.Init(domain_name //irc.twitch.tv for example, port, password, username, nickname) //for example, irc.twitch.tv, 6667, twitch_client_token, leave blank like "", and "cobbbot" for the nickname
 client.Connect() //connect to the specified domain
 client.Disconnect() //handles disconnect, should be called immediately after connect
-client.Join(server //cobbcoding for example)
+client.Join(server) //cobbcoding for example
 
 // main loop
 for {
