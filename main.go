@@ -131,12 +131,13 @@ func (client *Client)Join(server string){
     client.reader = tp
 }
 
-func (client *Client)HandlePong() {
+func (client *Client)HandlePong(data string) {
     if client.disconnected {
         return
     }
-    if strings.HasPrefix(client.chat.Message, "PING") {
-        send_data(client.conn, fmt.Sprintf("PONG %s\n", strings.TrimPrefix(client.chat.Message, "PING ")))
+    if strings.HasPrefix(data, "PING") {
+        send_data(client.conn, fmt.Sprintf("PONG %s\n", strings.TrimPrefix(data, "PING ")))
+        fmt.Println(fmt.Sprintf("PONG %s\n", strings.TrimPrefix(data, "PING ")))
     }
 }
 
@@ -144,6 +145,8 @@ func (client *Client)GetData()(MSG) {
     if !client.disconnected {
         data, err := client.reader.ReadLine()
         handle_error(err)
+        client.HandlePong(data)
+        fmt.Println(data)
         msg := parse_message(data)
         client.chat = msg
         return msg 
